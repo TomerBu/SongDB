@@ -2,6 +2,7 @@ package tomerbu.edu.songdbhelper.db;
 
 import android.content.ContentProvider;
 import android.content.ContentValues;
+import android.content.Context;
 import android.content.UriMatcher;
 import android.database.Cursor;
 import android.net.Uri;
@@ -33,10 +34,17 @@ public class SongsProvider extends ContentProvider {
             case SONGS:
                 long insertedID = helper.getWritableDatabase().insert("Songs", null, values);
                 Uri insertedURI = SONGS_URI.buildUpon().appendPath(insertedID + "").build();
+                notifyChange(uri);
                 return insertedURI;
             default:
                 throw new UnsupportedOperationException("No Such Uri");
         }
+    }
+
+    private void notifyChange(Uri uri) {
+        Context c = getContext();
+        assert c != null;
+        c.getContentResolver().notifyChange(uri, null);
     }
 
 
@@ -46,15 +54,18 @@ public class SongsProvider extends ContentProvider {
         switch (matcher.match(uri)) {
             case SONGS:
                 int deleteCount = helper.getWritableDatabase().delete("Songs", selection, selectionArgs);
+                notifyChange(uri);
                 return deleteCount;
 
             case SONGS_ID:
                 selection = getUpdatedSelection(uri, selection);
                 int deleteCounts = helper.getWritableDatabase().delete("Songs", selection, selectionArgs);
+                notifyChange(uri);
                 return deleteCounts;
             default:
                 throw new UnsupportedOperationException("No Such Uri");
         }
+
     }
 
 
@@ -64,10 +75,13 @@ public class SongsProvider extends ContentProvider {
         switch (matcher.match(uri)) {
             case SONGS:
                 Cursor cursor = helper.getWritableDatabase().query("Songs", projection, selection, selectionArgs, null, null, sortOrder);
+                cursor.setNotificationUri(getContext().getContentResolver(), uri);
                 return cursor;
             case SONGS_ID:
                 selection = getUpdatedSelection(uri, selection);
-                return helper.getWritableDatabase().query("Songs", projection, selection, selectionArgs, null, null, sortOrder);
+                Cursor c = helper.getWritableDatabase().query("Songs", projection, selection, selectionArgs, null, null, sortOrder);
+                c.setNotificationUri(getContext().getContentResolver(), uri);
+                return c;
             default:
                 throw new UnsupportedOperationException("No Such Uri");
         }
@@ -95,10 +109,13 @@ public class SongsProvider extends ContentProvider {
         switch (matcher.match(uri)) {
             case SONGS:
                 int updatedCount = helper.getWritableDatabase().update("Songs", values, selection, selectionArgs);
+                notifyChange(uri);
                 return updatedCount;
             case SONGS_ID:
                 selection = getUpdatedSelection(uri, selection);
-                return helper.getWritableDatabase().update("Songs", values, selection, selectionArgs);
+                int count = helper.getWritableDatabase().update("Songs", values, selection, selectionArgs);
+                notifyChange(uri);
+                return count;
             default:
                 throw new UnsupportedOperationException("No Such uri");
 
